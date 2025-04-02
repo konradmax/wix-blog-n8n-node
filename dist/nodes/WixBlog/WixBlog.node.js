@@ -43,6 +43,15 @@ class WixBlog {
                     description: 'Title of the article to publish.'
                 },
                 {
+                    displayName: 'Article Content',
+                    name: 'articleContent',
+                    type: 'string',
+                    default: '',
+                    required: false,
+                    description: 'Content of the article. Can be set dynamically from previous nodes.',
+                    placeholder: '{{$json["content"]}}'
+                },
+                {
                     displayName: 'Member ID',
                     name: 'memberId',
                     type: 'string',
@@ -55,28 +64,41 @@ class WixBlog {
     }
     async execute() {
         const items = this.getInputData();
-        const apiKey = this.getNodeParameter('apiKey', 0);
-        const siteId = this.getNodeParameter('siteId', 0);
-        const articleTitle = this.getNodeParameter('articleTitle', 0);
-        const memberId = this.getNodeParameter('memberId', 0);
-        const wixClient = (0, sdk_1.createClient)({
-            modules: { draftPosts: blog_1.draftPosts },
-            auth: (0, sdk_1.ApiKeyStrategy)({
-                siteId,
-                apiKey
-            })
-        });
-        try {
-            const response = await wixClient.draftPosts.createDraftPost({
-                title: articleTitle,
-                memberId
-            }, {});
-            return [this.helpers.returnJsonArray(response)];
+        const returnData = [];
+        for (let i = 0; i < items.length; i++) {
+            const apiKey = this.getNodeParameter('apiKey', i);
+            const siteId = this.getNodeParameter('siteId', i);
+            const articleTitle = this.getNodeParameter('articleTitle', i);
+            const articleContent = this.getNodeParameter('articleContent', i, '');
+            const memberId = this.getNodeParameter('memberId', i);
+            const wixClient = (0, sdk_1.createClient)({
+                modules: { draftPosts: blog_1.draftPosts },
+                auth: (0, sdk_1.ApiKeyStrategy)({
+                    siteId,
+                    apiKey
+                })
+            });
+            try {
+                const response = await wixClient.draftPosts.createDraftPost({
+                    title: articleTitle,
+                    content: {
+                        blocks: [
+                            {
+                                type: "paragraph",
+                                text: articleContent
+                            }
+                        ]
+                    },
+                    memberId
+                }, {});
+                returnData.push(response);
+            }
+            catch (error) {
+                const err = error;
+                throw new Error(`Failed to create draft post: ${err.response?.data?.message || err.message || 'Unknown error'}`);
+            }
         }
-        catch (error) {
-            const err = error;
-            throw new Error(`Failed to create draft post: ${err.response?.data?.message || err.message || 'Unknown error'}`);
-        }
+        return [this.helpers.returnJsonArray(returnData)];
     }
 }
 exports.WixBlog = WixBlog;

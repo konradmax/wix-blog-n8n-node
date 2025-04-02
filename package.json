@@ -1,6 +1,6 @@
 {
-  "name": "wix-blog-n8n-node",
-  "version": "1.0.0",
+  "name": "n8n-nodes-wix-blog",
+  "version": "1.0.6",
   "description": "n8n custom node for Wix Blog",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,11 +9,15 @@
     "lint": "eslint . --ext .ts",
     "prepublishOnly": "npm run build"
   },
+  "n8n": {
+    "nodes": [
+      "./dist/nodes/WixBlog/WixBlog.node.js"
+    ]
+  },
   "dependencies": {
     "@wix/blog": "^1.0.373",
     "@wix/sdk": "^1.15.15",
-    "n8n-workflow": "^1.82.0",
-    "node-fetch": "^2.7.0"
+    "n8n-workflow": "^1.82.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.13",

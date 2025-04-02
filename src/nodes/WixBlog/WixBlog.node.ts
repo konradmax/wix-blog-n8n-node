@@ -2,7 +2,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IExecuteFunctions,
-	NodeConnectionType
+	NodeConnectionType,
+	IDataObject
 } from 'n8n-workflow';
 import { createClient, ApiKeyStrategy } from '@wix/sdk';
 import { draftPosts } from '@wix/blog';
@@ -46,6 +47,14 @@ export class WixBlog implements INodeType {
 				description: 'Title of the article to publish.'
 			},
 			{
+				displayName: 'Article Content',
+				name: 'articleContent',
+				type: 'string',
+				default: '',
+				required: false,
+				description: 'Content of the article. Can be set dynamically from previous nodes.'
+			},
+			{
 				displayName: 'Member ID',
 				name: 'memberId',
 				type: 'string',
@@ -58,32 +67,47 @@ export class WixBlog implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<any> {
 		const items = this.getInputData();
-		const apiKey = this.getNodeParameter('apiKey', 0) as string;
-		const siteId = this.getNodeParameter('siteId', 0) as string;
-		const articleTitle = this.getNodeParameter('articleTitle', 0) as string;
-		const memberId = this.getNodeParameter('memberId', 0) as string;
+		const returnData: IDataObject[] = [];
 
-		const wixClient = createClient({
-			modules: { draftPosts },
-			auth: ApiKeyStrategy({
-				siteId,
-				apiKey
-			})
-		});
+		for (let i = 0; i < items.length; i++) {
+			const apiKey = this.getNodeParameter('apiKey', i) as string;
+			const siteId = this.getNodeParameter('siteId', i) as string;
+			const articleTitle = this.getNodeParameter('articleTitle', i) as string;
+			const articleContent = this.getNodeParameter('articleContent', i, '') as string;
+			const memberId = this.getNodeParameter('memberId', i) as string;
 
-		try {
-			const response = await wixClient.draftPosts.createDraftPost(
-				{
-					title: articleTitle,
-					memberId
-				},
-				{}
-			);
+			const wixClient = createClient({
+				modules: { draftPosts },
+				auth: ApiKeyStrategy({
+					siteId,
+					apiKey
+				})
+			});
 
-			return [this.helpers.returnJsonArray(response as any)];
-		} catch (error: unknown) {
-			const err = error as { response?: { data?: { message?: string } }; message?: string };
-			throw new Error(`Failed to create draft post: ${err.response?.data?.message || err.message || 'Unknown error'}`);
+			try {
+				const response = await wixClient.draftPosts.createDraftPost(
+					{
+						title: articleTitle,
+						content: {
+							blocks: [
+								{
+									type: "paragraph",
+									text: articleContent
+								}
+							]
+						},
+						memberId
+					},
+					{}
+				);
+
+				returnData.push(response as unknown as IDataObject);
+			} catch (error: unknown) {
+				const err = error as { response?: { data?: { message?: string } }; message?: string };
+				throw new Error(`Failed to create draft post: ${err.response?.data?.message || err.message || 'Unknown error'}`);
+			}
 		}
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
