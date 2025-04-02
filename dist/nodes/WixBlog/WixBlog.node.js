@@ -3,6 +3,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WixBlog = void 0;
 const sdk_1 = require("@wix/sdk");
 const blog_1 = require("@wix/blog");
+// Manually define the TextAlignment enum
+var TextAlignment;
+(function (TextAlignment) {
+    TextAlignment["AUTO"] = "AUTO";
+    TextAlignment["LEFT"] = "LEFT";
+    TextAlignment["RIGHT"] = "RIGHT";
+    TextAlignment["CENTER"] = "CENTER";
+    TextAlignment["JUSTIFY"] = "JUSTIFY";
+})(TextAlignment || (TextAlignment = {}));
+// Define the NodeType enum
+var NodeType;
+(function (NodeType) {
+    NodeType["PARAGRAPH"] = "PARAGRAPH";
+    NodeType["TEXT"] = "TEXT";
+})(NodeType || (NodeType = {}));
 class WixBlog {
     constructor() {
         this.description = {
@@ -13,7 +28,7 @@ class WixBlog {
             description: 'Publishes draft posts to Wix Blog using Wix REST API',
             defaults: {
                 name: 'Wix Blog',
-                color: '#32a852'
+                color: '#32a852',
             },
             inputs: [{ type: "main" /* NodeConnectionType.Main */ }],
             outputs: [{ type: "main" /* NodeConnectionType.Main */ }],
@@ -24,7 +39,7 @@ class WixBlog {
                     type: 'string',
                     default: '',
                     required: true,
-                    description: 'Your Wix API Key.'
+                    description: 'Your Wix API Key.',
                 },
                 {
                     displayName: 'Site ID',
@@ -32,7 +47,7 @@ class WixBlog {
                     type: 'string',
                     default: '',
                     required: true,
-                    description: 'Your Wix Site ID.'
+                    description: 'Your Wix Site ID.',
                 },
                 {
                     displayName: 'Article Title',
@@ -40,16 +55,15 @@ class WixBlog {
                     type: 'string',
                     default: '',
                     required: true,
-                    description: 'Title of the article to publish.'
+                    description: 'Title of the article to publish.',
                 },
                 {
-                    displayName: 'Article Content',
+                    displayName: 'Article Content (Text)',
                     name: 'articleContent',
                     type: 'string',
                     default: '',
                     required: false,
-                    description: 'Content of the article. Can be set dynamically from previous nodes.',
-                    placeholder: '{{$json["content"]}}'
+                    description: 'Plain text content of the article.',
                 },
                 {
                     displayName: 'Member ID',
@@ -57,9 +71,9 @@ class WixBlog {
                     type: 'string',
                     default: '',
                     required: true,
-                    description: 'ID of the member creating the article.'
-                }
-            ]
+                    description: 'ID of the member creating the article.',
+                },
+            ],
         };
     }
     async execute() {
@@ -75,21 +89,38 @@ class WixBlog {
                 modules: { draftPosts: blog_1.draftPosts },
                 auth: (0, sdk_1.ApiKeyStrategy)({
                     siteId,
-                    apiKey
-                })
+                    apiKey,
+                }),
             });
+            const richContent = {
+                nodes: [
+                    {
+                        type: NodeType.PARAGRAPH,
+                        nodes: [
+                            {
+                                type: NodeType.TEXT,
+                                nodes: [],
+                                textData: {
+                                    text: articleContent,
+                                    decorations: [],
+                                },
+                            },
+                        ],
+                        paragraphData: {
+                            textStyle: {
+                                textAlignment: TextAlignment.AUTO,
+                            },
+                            indentation: 0,
+                        },
+                    },
+                ],
+                metadata: {},
+            };
             try {
                 const response = await wixClient.draftPosts.createDraftPost({
                     title: articleTitle,
-                    content: {
-                        blocks: [
-                            {
-                                type: "paragraph",
-                                text: articleContent
-                            }
-                        ]
-                    },
-                    memberId
+                    richContent: richContent,
+                    memberId: memberId,
                 }, {});
                 returnData.push(response);
             }

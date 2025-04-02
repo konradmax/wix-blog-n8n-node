@@ -1,6 +1,6 @@
 {
-  "name": "n8n-nodes-wix-blog",
-  "version": "1.0.6",
+  "name": "n8n-nodes-wix-blog-post-generator",
+  "version": "1.0.0",
   "description": "n8n custom node for Wix Blog",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

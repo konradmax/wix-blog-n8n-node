@@ -3,10 +3,26 @@ import {
 	INodeTypeDescription,
 	IExecuteFunctions,
 	NodeConnectionType,
-	IDataObject
+	IDataObject,
 } from 'n8n-workflow';
+
 import { createClient, ApiKeyStrategy } from '@wix/sdk';
 import { draftPosts } from '@wix/blog';
+
+// Manually define the TextAlignment enum
+enum TextAlignment {
+	AUTO = 'AUTO',
+	LEFT = 'LEFT',
+	RIGHT = 'RIGHT',
+	CENTER = 'CENTER',
+	JUSTIFY = 'JUSTIFY',
+}
+
+// Define the NodeType enum
+enum NodeType {
+	PARAGRAPH = 'PARAGRAPH',
+	TEXT = 'TEXT',
+}
 
 export class WixBlog implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +33,7 @@ export class WixBlog implements INodeType {
 		description: 'Publishes draft posts to Wix Blog using Wix REST API',
 		defaults: {
 			name: 'Wix Blog',
-			color: '#32a852'
+			color: '#32a852',
 		},
 		inputs: [{ type: NodeConnectionType.Main }],
 		outputs: [{ type: NodeConnectionType.Main }],
@@ -28,7 +44,7 @@ export class WixBlog implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Your Wix API Key.'
+				description: 'Your Wix API Key.',
 			},
 			{
 				displayName: 'Site ID',
@@ -36,7 +52,7 @@ export class WixBlog implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Your Wix Site ID.'
+				description: 'Your Wix Site ID.',
 			},
 			{
 				displayName: 'Article Title',
@@ -44,15 +60,15 @@ export class WixBlog implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Title of the article to publish.'
+				description: 'Title of the article to publish.',
 			},
 			{
-				displayName: 'Article Content',
+				displayName: 'Article Content (Text)',
 				name: 'articleContent',
 				type: 'string',
 				default: '',
 				required: false,
-				description: 'Content of the article. Can be set dynamically from previous nodes.'
+				description: 'Plain text content of the article.',
 			},
 			{
 				displayName: 'Member ID',
@@ -60,9 +76,9 @@ export class WixBlog implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'ID of the member creating the article.'
-			}
-		]
+				description: 'ID of the member creating the article.',
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<any> {
@@ -80,23 +96,41 @@ export class WixBlog implements INodeType {
 				modules: { draftPosts },
 				auth: ApiKeyStrategy({
 					siteId,
-					apiKey
-				})
+					apiKey,
+				}),
 			});
+
+			const richContent = {
+				nodes: [
+					{
+						type: NodeType.PARAGRAPH,
+						nodes: [
+							{
+								type: NodeType.TEXT,
+								nodes: [],
+								textData: {
+									text: articleContent,
+									decorations: [],
+								},
+							},
+						],
+						paragraphData: {
+							textStyle: {
+								textAlignment: TextAlignment.AUTO,
+							},
+							indentation: 0,
+						},
+					},
+				],
+				metadata: {},
+			};
 
 			try {
 				const response = await wixClient.draftPosts.createDraftPost(
 					{
 						title: articleTitle,
-						content: {
-							blocks: [
-								{
-									type: "paragraph",
-									text: articleContent
-								}
-							]
-						},
-						memberId
+						richContent: richContent,
+						memberId: memberId,
 					},
 					{}
 				);
